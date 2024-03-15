@@ -26,6 +26,8 @@ echo "    container_name: server
       - LOGGING_LEVEL=DEBUG
     networks:
       - testing_net
+    volumes:
+      - config-volume:/config
     " >> $FILE
 
 for i in $(seq 1 $CONTAINERS_NUMBER); do
@@ -40,6 +42,8 @@ for i in $(seq 1 $CONTAINERS_NUMBER); do
       - testing_net
     depends_on:
       - server
+    volumes:
+      - config-volume:/config
     " >> $FILE
 done
 
@@ -49,5 +53,9 @@ echo "    ipam:" >> $FILE
 echo "      driver: default" >> $FILE
 echo "      config:" >> $FILE
 echo "        - subnet: 172.25.125.0/24" >> $FILE
+
+echo "volumes:" >> $FILE
+echo "  config-volume:" >> $FILE
+echo "    external: true" >> $FILE
 
 

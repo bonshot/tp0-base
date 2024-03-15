@@ -25,7 +25,12 @@ docker-image:
 	# docker rmi `docker images --filter label=intermediateStageToBeDeleted=true -q`
 .PHONY: docker-image
 
-docker-compose-up: docker-image
+# Copy the config files to the volume ONLY if those files are not already there
+copy-config-to-volume:
+	docker volume create config-volume
+	bash copy-checker.sh
+
+docker-compose-up: docker-image copy-config-to-volume
 	docker compose -f docker-compose.yaml up -d --build
 .PHONY: docker-compose-up
 
