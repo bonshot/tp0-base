@@ -36,6 +36,7 @@ docker-compose-up: docker-image copy-config-to-volume
 
 docker-compose-down:
 	docker compose -f docker-compose.yaml stop -t 1
+#	make docker-compose-logs                                for exercise 4 testing purposes
 	docker compose -f docker-compose.yaml down
 .PHONY: docker-compose-down
 
