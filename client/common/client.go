@@ -56,9 +56,6 @@ func (c *Client) StartClientLoop() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGTERM)
 
-	// Create a channel to shutdown the client in case it's needed
-	shutdown_channel := make(chan struct{})
-
 	// Create a goroutine to handle the signal in a non-blocking way
 	go func() {
 		// Wait for the signal
@@ -68,16 +65,7 @@ func (c *Client) StartClientLoop() {
 		c.conn.Close()
 		log.Infof("action: closing_connection | result: success | client_id: %v", c.config.ID)
 		log.Infof("action: sigterm_signal_handling | result: success | client_id: %v", c.config.ID)
-		close(shutdown_channel)
 	}()
-
-	// Verify if the shutdown channel was closed to exit the client execution in case of SIGTERM or normal exit
-	select {
-	case <-shutdown_channel:
-		log.Infof("action: shutdown_detected | result: success | client_id: %v", c.config.ID)
-		return
-	default:
-	}
 
 	// Create the connection to the server and defer the close (close at the end)
 	c.createClientSocket()
