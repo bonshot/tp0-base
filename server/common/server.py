@@ -10,7 +10,6 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
-        self.sigterm_received = False
 
     def run(self):
         """
@@ -21,28 +20,9 @@ class Server:
         finishes, servers starts to accept new connections again
         """
 
-        signal.signal(signal.SIGTERM, self.__sigterm_handler)
-        
-        while not self.sigterm_received:
-            client_sock = self.__accept_new_connection(timeout=0.1)
-            if client_sock is not None:
-                self.__handle_client_connection(client_sock)
-        self._server_socket.close()
-        logging.info("action: closing_server_socket | result: success")
-        logging.info(f"action: sigterm_signal_handling | result: success")
-        logging.info("action: server_shutdown | result: success")
-        
-    def __sigterm_handler(self, signum, frame):
-        """
-        Signal handler for SIGTERM to gracefully shutdown the server
-
-        This function will be called when the server receives a SIGTERM
-        signal. The server will set the sigterm_received flag to True and
-        will stop accepting new connections.
-        """
-
-        self.sigterm_received = True
-        logging.info(f"action: sigterm_signal_handling | result: in_progress")
+        client_sock = self.__accept_new_connection()
+        if client_sock is not None:
+            self.__handle_client_connection(client_sock)
 
     def __handle_client_connection(self, client_sock):
         """
@@ -63,7 +43,7 @@ class Server:
         finally:
             client_sock.close()
 
-    def __accept_new_connection(self, timeout):
+    def __accept_new_connection(self):
         """
         Accept new connections with a timeout
 
@@ -73,15 +53,7 @@ class Server:
         that either no client connected or a SIGTERM signal was received
         """
 
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            logging.info('action: accept_connections | result: in_progress')
-            ready, _, _ = select.select([self._server_socket], [], [], timeout)
-            if ready: # Verifies if the server socket is ready to be read, avoiding a blocking call
-                c, addr = self._server_socket.accept()
-                logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
-                return c
-            if self.sigterm_received:
-                break
-        logging.info('action: accept_connections | result: timeout_exceeded')
-        return None
+        logging.info('action: accept_connections | result: in_progress')
+        c, addr = self._server_socket.accept()
+        logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
+        return c

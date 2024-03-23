@@ -55,25 +55,6 @@ func (c *Client) StartClientLoop() {
 	// autoincremental msgID to identify every message sent
 	msgID := 1
 
-	// Handle SIGTERM to close the connection before exiting
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGTERM)
-
-	// Create a channel to shutdown the client in case it's needed
-	shutdown_channel := make(chan struct{})
-
-	// Create a goroutine to handle the signal in a non-blocking way
-	go func() {
-		// Wait for the signal
-		<-sig
-		// Close the connection
-		log.Infof("action: sigterm_signal_handling | result: in_progress | client_id: %v", c.config.ID)
-		c.conn.Close()
-		log.Infof("action: closing_connection | result: success | client_id: %v", c.config.ID)
-		log.Infof("action: sigterm_signal_handling | result: success | client_id: %v", c.config.ID)
-		close(shutdown_channel)
-	}()
-
 loop:
 	// Send messages if the loopLapse threshold has not been surpassed
 	for timeout := time.After(c.config.LoopLapse); ; {
@@ -82,9 +63,6 @@ loop:
 	        log.Infof("action: timeout_detected | result: success | client_id: %v",
                 c.config.ID,
             )
-			break loop
-		case <-shutdown_channel:
-			log.Infof("action: shutdown_detected | result: success | client_id: %v", c.config.ID)
 			break loop
 		default:
 		}
