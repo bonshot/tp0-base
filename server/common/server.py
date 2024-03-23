@@ -3,6 +3,8 @@ import socket
 import logging
 import signal
 import time
+from common.communications import receive_message, send_message
+from common.utils import Bet, store_bets
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -10,7 +12,7 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
-        self.sigterm_received = False
+        self._sigterm_received = False
 
     def run(self):
         """
@@ -23,7 +25,7 @@ class Server:
 
         signal.signal(signal.SIGTERM, self.__sigterm_handler)
         
-        while not self.sigterm_received:
+        while not self._sigterm_received:
             client_sock = self.__accept_new_connection(timeout=0.1)
             if client_sock is not None:
                 self.__handle_client_connection(client_sock)
@@ -41,7 +43,7 @@ class Server:
         will stop accepting new connections.
         """
 
-        self.sigterm_received = True
+        self._sigterm_received = True
         logging.info(f"action: sigterm_signal_handling | result: in_progress")
 
     def __handle_client_connection(self, client_sock):
@@ -52,16 +54,25 @@ class Server:
         client socket will also be closed
         """
         try:
-            # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
+            msg = receive_message(client_sock)
+            # Split the message into the bet information
+            bet_info = msg.split("|")
             addr = client_sock.getpeername()
             logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
+            
+            # Create a new bet object and store it
+            bet = Bet(*bet_info)
+            store_bets([bet])
+            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+
+            # Send an ACK message to the client
+            send_message(client_sock, "ACK")
+
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
             client_sock.close()
+
 
     def __accept_new_connection(self, timeout):
         """
@@ -81,7 +92,7 @@ class Server:
                 c, addr = self._server_socket.accept()
                 logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
                 return c
-            if self.sigterm_received:
+            if self._sigterm_received:
                 break
         logging.info('action: accept_connections | result: timeout_exceeded')
         return None

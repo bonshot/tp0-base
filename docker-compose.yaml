@@ -20,6 +20,11 @@ services:
     environment:
       - CLI_ID=1
       - CLI_LOG_LEVEL=DEBUG
+      - CLI_NAME=Santiago Lionel
+      - CLI_SURNAME=Lorca
+      - CLI_GAMBLER_ID=30904465
+      - CLI_BIRTHDATE=1999-03-17
+      - CLI_NUMBER=7574
     networks:
       - testing_net
     depends_on:
@@ -34,6 +39,11 @@ services:
     environment:
       - CLI_ID=2
       - CLI_LOG_LEVEL=DEBUG
+      - CLI_NAME=Juan
+      - CLI_SURNAME=Perez
+      - CLI_GAMBLER_ID=34789124
+      - CLI_BIRTHDATE=1998-05-12
+      - CLI_NUMBER=3142
     networks:
       - testing_net
     depends_on:
@@ -48,6 +58,11 @@ services:
     environment:
       - CLI_ID=3
       - CLI_LOG_LEVEL=DEBUG
+      - CLI_NAME=Lucia Jazmin
+      - CLI_SURNAME=Rodriguez
+      - CLI_GAMBLER_ID=38901234
+      - CLI_BIRTHDATE=2000-12-25
+      - CLI_NUMBER=5678
     networks:
       - testing_net
     depends_on:
@@ -62,6 +77,11 @@ services:
     environment:
       - CLI_ID=4
       - CLI_LOG_LEVEL=DEBUG
+      - CLI_NAME=Carlos Miguel
+      - CLI_SURNAME=Sanchez
+      - CLI_GAMBLER_ID=39876543
+      - CLI_BIRTHDATE=1997-08-30
+      - CLI_NUMBER=7890
     networks:
       - testing_net
     depends_on:
@@ -76,6 +96,11 @@ services:
     environment:
       - CLI_ID=5
       - CLI_LOG_LEVEL=DEBUG
+      - CLI_NAME=Ana Maria
+      - CLI_SURNAME=Alvarez
+      - CLI_GAMBLER_ID=40901234
+      - CLI_BIRTHDATE=2001-12-25
+      - CLI_NUMBER=1890
     networks:
       - testing_net
     depends_on:

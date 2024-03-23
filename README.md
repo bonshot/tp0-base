@@ -48,6 +48,10 @@ docker exec -it client_test /bin/bash -c "echo 'Hello buddy' | nc server 12345 |
 ```
 Esto se encarga de enviar el mensaje al servidor usando `netcat` con la IP y puerto que el servidor tiene asignado en sus configs iniciales, luego usando pipes para redireccionar las salidas, con `grep` imprimo por pantalla si el mensaje recibido como respuesta del servidor es el mismo que el enviado y con `&&` y `||` imprimo si el test pasó o falló.  
 Finalmente como se trata de un script de testing, me encargo de parar y remover el container temporal así como el compose que levanté para el servidor.  
+Modo de uso:
+```bash 
+bash net_test_script.sh
+```
 
 ## <span style="color:#9669f0">Ejercicio 4</span>
 En este caso se deberá hacer un handleo de la señal _SIGTERM_ para que tanto cliente como servidor puedan cerrarse de manera correcta o _graceful_.  
@@ -60,3 +64,15 @@ cortar la ejecución, y en el caso del servidor se utiliza un flag `sigterm_rece
 Para poder probar que los logs funcionan correctamente basta con agregar en el `Makefile` el comando `make docker-compose-logs` dentro de la regla `docker-compose-down` (ya que esta por dentro al hacer el _stop_ manda una _SIGTERM_ a los containers y debería cerrarlos de manera _graceful_ si no estaban cerrados ya).
 
 ## <span style="color:#9669f0">Ejercicio 5</span>
+Para este ejercicio definí variables de entorno en el `docker-compose` para poder importarlas en el código como las propiedades de un gambler que registra una apuesta mediante una de las 5 agencias. Dichas agencias le mandaran el mensaje al servidor que es la central de apuestas y este registrará la apuesta en un csv usando `store_bets()` y luego envía un ACK al gambler de la agencia para confirmar que la apuesta fue registrada.  
+Para lograr esto tuve que crear un protocolo de comunicación entre servidor y cliente que pueda ser interpretado por ámbos mediante una convención de mensajes, así como también poder evitar short-write y short-reads desde ámbos lados, leyendo y escribiendo todo el mensaje en un solo `write` o `read` mediante el uso de un header que especifique el tamaño del mensaje.  
+En mi protocolo definí que los mensajes tendrían este formato:
+```python
+HEADER|MESSAGE
+```
+Donde el `HEADER` es un entero que representa la longitud del mensaje y el `MESSAGE` es el mensaje en sí.  
+y el mensaje está conformado de la siguiente manera con la información de la apuesta:
+```python
+<ID_AGENCIA>|<NOMBRE_GAMBLER>|<APELLIDO_GAMBLER>|<DOCUMENTO_GAMBLER>|<FECHA_CUMPLE_GAMBLER>|<NUMERO>
+```
+Finalmente para probarlo se corre el compose up y se miran los logs viendo que efectivamente la comunicación entre cliente y servidor se dá bien así como también el cliente recibe el ACK final de la apuesta registrada.  
