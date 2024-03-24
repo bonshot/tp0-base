@@ -100,17 +100,8 @@ func (c *Client) StartClientLoop() {
 		send_bets(c.conn, bets, c.config.ID)
 
 		// Wait for the server to send ACK
-		ack, err := ReceiveMessage(c.conn)
-		if err != nil {
-			log.Fatalf(
-				"action: receive_message | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-		}
-		if ack == "ACK" {
-			log.Infof("action: batch_enviado | result: success | client_id: %v | message: %v", c.config.ID, ack)
-		}
+		log_info_message := fmt.Sprintf("action: batch_enviado | result: success | client_id: %v | message: %v", c.config.ID, "ACK")
+		wait_for_message(c.conn, "ACK", log_info_message, c.config.ID)
 	}
 
 	// Send the EOF message to the server
@@ -124,17 +115,12 @@ func (c *Client) StartClientLoop() {
 	}
 
 	// Wait for the server to send final ACK
-	final_ack, err := ReceiveMessage(c.conn)
-	if err != nil {
-		log.Fatalf(
-			"action: receive_message | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
-	}
-	if final_ack == "ACK" {
-		log.Infof("action: apuestas_enviadas | result: success | client_id: %v | message: %v", c.config.ID, final_ack)
-	}
+	log_info_message := fmt.Sprintf("action: apuestas_enviadas | result: success | client_id: %v | message: %v", c.config.ID, "ACK")
+	wait_for_message(c.conn, "ACK", log_info_message, c.config.ID)
+
+	// Wait for winners reveal :D
+	wait_for_message(c.conn, "WINNERS", "action: winners_revealing | result: in_progress", c.config.ID)
+	ask_winners(c.conn, c.config.ID)
 
 	log.Infof("action: client_finished | result: success | client_id: %v", c.config.ID)
 
@@ -155,4 +141,39 @@ func send_bets(conn net.Conn, bets []Bet, client_id string) {
 			)
 		}
 	}
+}
+
+func wait_for_message(conn net.Conn, msg string, loginfo string, client_id string) {
+	// Wait for the server to send ACK
+	received, err := ReceiveMessage(conn)
+	if err != nil {
+		log.Fatalf(
+			"action: receive_message | result: fail | client_id: %v | error: %v",
+			client_id,
+			err,
+		)
+	}
+	if received == msg {
+		log.Infof(loginfo)
+	}
+}
+
+func ask_winners(conn net.Conn, client_id string) {
+ 	winners := make([]string, 0)
+	for {
+		// Wait for the server to send the winner
+		winner, err := ReceiveMessage(conn)
+		if err != nil {
+			log.Fatalf(
+				"action: receive_message | result: fail | client_id: %v | error: %v",
+				client_id,
+				err,
+			)
+		}
+		if winner == "WINNERS_EOF\n" {
+			break
+		}
+		winners = append(winners, winner)
+	}
+	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %d", len(winners))
 }

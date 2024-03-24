@@ -4,7 +4,9 @@ import logging
 import signal
 import time
 from common.communications import receive_message, send_message
-from common.utils import Bet, store_bets
+from common.utils import Bet, store_bets, load_bets, has_won
+
+TOTAL_AGENCIES = 5 # Since we are using a fixed number of agencies, we can define it as a constant
 
 class Server:
     def __init__(self, port, listen_backlog, batch_size):
@@ -14,6 +16,8 @@ class Server:
         self._server_socket.listen(listen_backlog)
         self._sigterm_received = False
         self._BATCH_SIZE = batch_size
+        self._total_agencies_attended = 0
+        self._agencies_sockets = {i: None for i in range(1, TOTAL_AGENCIES + 1)}
 
     def run(self):
         """
@@ -31,6 +35,9 @@ class Server:
             if client_sock is not None:
                 self.__handle_client_connection(client_sock)
         self._server_socket.close()
+        # Close all the sockets of the agencies
+        for _, sock in self._agencies_sockets.items():
+            sock.close()
         logging.info("action: closing_server_socket | result: success")
         logging.info(f"action: sigterm_signal_handling | result: success")
         logging.info("action: server_shutdown | result: success")
@@ -55,15 +62,20 @@ class Server:
         client socket will also be closed
         """
         try:
-            actual_bets_received = 0
+            current_bets_received = 0
             while True:
                 msg = receive_message(client_sock).decode('utf-8')
                 if msg == "EOF\n":
                     send_message(client_sock, "ACK")
                     logging.info(f'action: all_batchs_saved | result: success | ip: {addr[0]} | msg: ACK')
+                    self._total_agencies_attended += 1
+                    if self._total_agencies_attended == TOTAL_AGENCIES:
+                        self._proceed_to_draw_lottery()
                     break
                 # Split the message into the bet information
                 bet_info = msg.split("|")
+                if self._agencies_sockets.get(bet_info[0]) is None:
+                    self._agencies_sockets[bet_info[0]] = client_sock
                 bet_info[5].replace("\n", "")
                 addr = client_sock.getpeername()
                 logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
@@ -72,16 +84,14 @@ class Server:
                 bet = Bet(*bet_info)
                 store_bets([bet])
                 logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
-                actual_bets_received += 1
+                current_bets_received += 1
 
-                if actual_bets_received == self._BATCH_SIZE:
+                if current_bets_received == self._BATCH_SIZE:
                     send_message(client_sock, "ACK")
                     logging.info(f'action: batch_saved | result: success | ip: {addr[0]} | msg: ACK')
-                    actual_bets_received = 0
+                    current_bets_received = 0
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {e}")
-        finally:
-            client_sock.close()
 
 
     def __accept_new_connection(self, timeout):
@@ -106,3 +116,31 @@ class Server:
                 break
         logging.info('action: accept_connections | result: timeout_exceeded')
         return None
+    
+    def _proceed_to_draw_lottery(self):
+        """
+        Function to draw the lottery winners
+
+        This function will be called when all the agencies have sent their
+        bets. It will get the winner bets and send the winners information
+        to the respective agencies
+        """
+        logging.info(f'action: sorteo | result: success')
+        winner_bets = []
+        agencies_winners = {i: [] for i in range(1, TOTAL_AGENCIES + 1)}
+        for bet in load_bets():
+            if has_won(bet):
+                winner_bets.append(bet)
+        for bet in winner_bets:
+            agencies_winners[bet.agency].append(bet)
+        for agency, winners in agencies_winners.items():
+            if self._agencies_sockets.get(str(agency)) is not None:
+                send_message(self._agencies_sockets[str(agency)], "WINNERS")
+                for winner in winners:
+                    send_message(self._agencies_sockets[str(agency)], f"{winner.document}")
+                send_message(self._agencies_sockets[str(agency)], "WINNERS_EOF\n")
+                logging.info(f'action: winners_sent | result: success | agency: {agency}')
+        logging.info(f'action: sorteo_finalizado | result: success')
+
+            
+
