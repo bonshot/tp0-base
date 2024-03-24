@@ -7,13 +7,13 @@ from common.communications import receive_message, send_message
 from common.utils import Bet, store_bets
 
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, batch_size):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self._sigterm_received = False
-        self._BATCH_SIZE = 7
+        self._BATCH_SIZE = batch_size
 
     def run(self):
         """

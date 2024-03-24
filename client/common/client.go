@@ -17,6 +17,7 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopLapse     time.Duration
 	LoopPeriod    time.Duration
+	BatchSize	 int
 }
 
 // Client Entity that encapsulates how
@@ -24,10 +25,6 @@ type Client struct {
 	config ClientConfig
 	conn   net.Conn
 }
-
-const(
-	BATCH_SIZE = 7
-)
 
 // NewClient Initializes a new client receiving the configuration
 // as a parameter
@@ -88,13 +85,13 @@ func (c *Client) StartClientLoop() {
 
 	for {
 		// Read the corresponding file and extract a BATCH of bets to send to the server
-		bets := read_bet_batch(BATCH_SIZE, scanner)
+		bets := read_bet_batch(c.config.BatchSize, scanner)
 		if len(bets) == 0 {
 			break
 		}
 
 		// If the batch is smaller than BATCH_SIZE, we send the remaining bets and finish
-		if len(bets) < BATCH_SIZE {
+		if len(bets) < c.config.BatchSize {
 			send_bets(c.conn, bets, c.config.ID)
 			break
 		}
