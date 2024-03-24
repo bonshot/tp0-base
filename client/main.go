@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"os"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -105,16 +104,7 @@ func main() {
 		LoopLapse:     v.GetDuration("loop.lapse"),
 		LoopPeriod:    v.GetDuration("loop.period"),
 	}
-	newBet := common.Bet{
-		Id: os.Getenv("CLI_ID"),
-		Name: os.Getenv("CLI_NAME"),
-		Surname: os.Getenv("CLI_SURNAME"),
-		Gambler_id: os.Getenv("CLI_GAMBLER_ID"),
-		Birthdate: os.Getenv("CLI_BIRTHDATE"),
-		Number: os.Getenv("CLI_NUMBER"),
-	}
 	client := common.NewClient(clientConfig)
-	client.Bet = newBet
 	client.StartClientLoop()
 	fmt.Println("Client finished")
 }

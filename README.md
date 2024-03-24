@@ -75,4 +75,4 @@ y el mensaje está conformado de la siguiente manera con la información de la a
 ```python
 <ID_AGENCIA>|<NOMBRE_GAMBLER>|<APELLIDO_GAMBLER>|<DOCUMENTO_GAMBLER>|<FECHA_CUMPLE_GAMBLER>|<NUMERO>
 ```
-Finalmente para probarlo se corre el compose up y se miran los logs viendo que efectivamente la comunicación entre cliente y servidor se dá bien así como también el cliente recibe el ACK final de la apuesta registrada.  
+Finalmente para probarlo se corre el compose up y se miran los logs viendo que efectivamente la comunicación entre cliente y servidor se dá bien así como también el cliente recibe el ACK final de la apuesta registrada. Si ejecutamos `docker exec -it server cat bets.csv` podremos ver que efectivamente se registraron las apuestas en el archivo csv.  
