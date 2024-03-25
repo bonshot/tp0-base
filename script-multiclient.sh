@@ -44,6 +44,7 @@ for i in $(seq 1 $CONTAINERS_NUMBER); do
       - server
     volumes:
       - client_vol:/config
+      - data_vol:/data
     " >> $FILE
 done
 
@@ -66,6 +67,12 @@ echo "    driver: local" >> $FILE
 echo "    driver_opts:" >> $FILE
 echo "      type: none" >> $FILE
 echo "      device: ./client/config" >> $FILE
+echo "      o: bind" >> $FILE
+echo "  data_vol:" >> $FILE
+echo "    driver: local" >> $FILE
+echo "    driver_opts:" >> $FILE
+echo "      type: none" >> $FILE
+echo "      device: ./.data/dataset" >> $FILE
 echo "      o: bind" >> $FILE
 
 

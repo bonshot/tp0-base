@@ -8,11 +8,11 @@ Para el ejercicio 1 simplemente basta con agregar una configuración similar al 
 De manera análoga en el ejercicio 1.1 solo debemos agregar las líneas mencionadas cambiando el ID del cliente de forma que se identifique de forma única en la red. Esto decidí hacerlo con bash por simplicidad en el manejo de archivos y esto nos ahorra, como se explicó en la presentación del trabajo, tener que hacer a mano tantos clientes nuevos como queramos.  
 La forma de ejecutar el script es la siguiente:  
 ```bash
-./create_clients.sh <cantidad_de_clientes>
+./script-multiclient.sh <cantidad_de_clientes>
 ```
 O para entornos no unix-like:
 ```bash
-bash create_clients.sh <cantidad_de_clientes>
+bash script-multiclient.sh <cantidad_de_clientes>
 ```  
 Luego de ejecutarlo se generará un archivo `docker-compose.yml` con la cantidad de clientes que se haya especificado integrados en la red del server. Se hizo esto con el solo fin de no interferir con el `docker-compose-dev.yml` que provee la cátedra, es meramente arbitrario. 
 Para poder "uppear" los contenedores se reemplaza en el `Makefile` proveído por la cátedra el `docker-compose-dev.yml` por el generado por el script.  
@@ -49,6 +49,10 @@ docker exec -it client_test /bin/bash -c "echo 'Hello buddy' | nc server 12345 |
 Esto se encarga de enviar el mensaje al servidor usando `netcat` con la IP y puerto que el servidor tiene asignado en sus configs iniciales, luego usando pipes para redireccionar las salidas, con `grep` imprimo por pantalla si el mensaje recibido como respuesta del servidor es el mismo que el enviado y con `&&` y `||` imprimo si el test pasó o falló.  
 Finalmente como se trata de un script de testing, me encargo de parar y remover el container temporal así como el compose que levanté para el servidor.  
 Modo de uso:
+```bash
+./net_test_script.sh
+```
+O para entornos no unix-like:
 ```bash 
 bash net_test_script.sh
 ```
@@ -78,3 +82,21 @@ y el mensaje está conformado de la siguiente manera con la información de la a
 Finalmente para probarlo se corre el compose up y se miran los logs viendo que efectivamente la comunicación entre cliente y servidor se dá bien así como también el cliente recibe el ACK final de la apuesta registrada.  
 
 ## <span style="color:#9669f0">Ejercicio 6</span>
+En este ejercicio me encontré con unas pocas dificultades, entre ellas la de cambiar el protocolo ya existente del ejercicio anterior y tener problemas con el manejo de las _tildes en los nombres_, lo que hacía que haya 2 bytes en lugar de 1 en esos caracteres y por ende el header no coincidía con el tamaño del mensaje. Esto lo solucioné modificando la forma de tratar al mensaje ni bien llega al servidor para hacerlo como bytes, y luego de obtener la información importante ahí si decodificarlo a utf-8 para poder trabajar con los nombres de los apostadores.  
+En este caso lo que hice fue agregar un volumen nuevo para cada cliente que se conecte al servidor, de manera que pueda acceder a su archivo de apuestas y leerlo para poder enviarlo al servidor en batches de tamaño `BATCH_SIZE` definido inicialmente como una constante en el código, y luego fue agregado como una variable de entorno en las configuraciones tanto de cliente como de servidor para su fácil modificación y cargado en el código.  
+Se toman esas apuestas y se las envía al servidor, el cual las recibe y las va registrando en el archivo `bets.csv` de manera análoga al ejercicio anterior. Una vez alcanzado `BATCH_SIZE` se envía un ACK al cliente para que este pueda seguir enviando apuestas, y en caso de que el cliente llegue a la parte final del archivo se (el intento de lectura de un batch resulta en una longitud menor de bets), se envía un mensaje de cierre al servidor para que este devuelva un ACK y cierre la conexión.  
+Para poder verificar que efectivamente se registraron las apuestas en el archivo `bets.csv` luego de la ejecución, se puede hacer un `docker exec -it server wc bets.csv` y ver el primero de los 3 valores devueltos que es la cantidad de líneas en el archivo, es equivalente a la suma de las apuestas de todos los clientes que se conectaron al servidor, siendo esta 78697 (Con los archivos de apuestas que se proveen en el repositorio).  
+Además, para poder ver que los exit codes son correctos en cada cliente (que se dificulta verlos porque la cantidad de mensajes del log opaca el exit `message`) se puede usar el siguiente comando:  
+```bash
+docker inspect --format='{{.State.ExitCode}}' <nombre_del_contenedor_o_id>
+```
+Esto devolverá el exit code del container que se le pase como argumento, y si es 0 significa que la ejecución fue exitosa.  
+
+## <span style="color:#9669f0">Ejercicio 7</span>
+Para el ejercicio se pide que simulemos el sorteo de la lotería, que habiendo el servidor recibido todas las apuestas, se sorteen los números y se envíen los resultados a los clientes.  
+El comportamiento de parte de los clientes es luego de mandar todo su archivo de apuestas esperar a que el servidor revele los ganadores, para esto el servidor debe enviar un mensaje de `WINNERS` al cliente, el cual este debe interpretar y luego de recibirlo esperar a que el servidor le envíe los números ganadores para finalmente imprimir la cantidad de apuestas ganadoras que tuvo su agencia.  
+Para lograrlo agregué al servidor una lista de sockets de forma que al terminar la recepción y guardado de las apuestas de un cliente, luego no se pierda ni cierre el socket del mismo para que cuando las `5` agencias hayan enviado sus apuestas, el servidor pueda enviar los números ganadores a cada cliente. Tenía intenciones de hacerlo genérico para poder soportar `N` agencias pero como en nuestro ejemplo abarcamos solo `5` agencias, me limité a usar una constante como contador de las agencias que ya se atendió en el servidor, si lo fueramos a aplicar a un caso real de `N` agencias, deberíamos poner un estilo de timeout para que el server espere hasta determinado momento a las agencias para que registren sus apuestas y pasado el tiempo no acepte más agencias y proceda con el sorteo.  
+La forma de ejecución de este ejercicio y su comprobación son análogas a los anteriores, simplemente se corre el make del compose y se miran los logs para ver que efectivamente se registraron las apuestas y luego de sortear la lotería cada cliente imprime la cantidad de ganadores de su agencia por log.  
+
+
+

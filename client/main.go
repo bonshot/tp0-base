@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"os"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -34,6 +33,7 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("loop", "period")
 	v.BindEnv("loop", "lapse")
 	v.BindEnv("log", "level")
+	v.BindEnv("batch", "size")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -77,12 +77,13 @@ func InitLogger(logLevel string) error {
 // PrintConfig Print all the configuration parameters of the program.
 // For debugging purposes only
 func PrintConfig(v *viper.Viper) {
-	logrus.Infof("action: config | result: success | client_id: %s | server_address: %s | loop_lapse: %v | loop_period: %v | log_level: %s",
+	logrus.Infof("action: config | result: success | client_id: %s | server_address: %s | loop_lapse: %v | loop_period: %v | log_level: %s | batch_size: %d",
 	    v.GetString("id"),
 	    v.GetString("server.address"),
 	    v.GetDuration("loop.lapse"),
 	    v.GetDuration("loop.period"),
 	    v.GetString("log.level"),
+		v.GetInt("batch.size"),
     )
 }
 
@@ -104,16 +105,9 @@ func main() {
 		ID:            v.GetString("id"),
 		LoopLapse:     v.GetDuration("loop.lapse"),
 		LoopPeriod:    v.GetDuration("loop.period"),
-	}
-	newBet := common.Bet{
-		Id: os.Getenv("CLI_ID"),
-		Name: os.Getenv("CLI_NAME"),
-		Surname: os.Getenv("CLI_SURNAME"),
-		Gambler_id: os.Getenv("CLI_GAMBLER_ID"),
-		Birthdate: os.Getenv("CLI_BIRTHDATE"),
-		Number: os.Getenv("CLI_NUMBER"),
+		BatchSize:     v.GetInt("batch.size"),
 	}
 	client := common.NewClient(clientConfig)
-	client.Bet = newBet
 	client.StartClientLoop()
+	fmt.Println("Client finished")
 }

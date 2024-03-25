@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"bufio"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,13 +17,13 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopLapse     time.Duration
 	LoopPeriod    time.Duration
+	BatchSize	 int
 }
 
 // Client Entity that encapsulates how
 type Client struct {
 	config ClientConfig
 	conn   net.Conn
-	Bet   Bet
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -56,9 +57,6 @@ func (c *Client) StartClientLoop() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGTERM)
 
-	// Create a channel to shutdown the client in case it's needed
-	shutdown_channel := make(chan struct{})
-
 	// Create a goroutine to handle the signal in a non-blocking way
 	go func() {
 		// Wait for the signal
@@ -68,65 +66,114 @@ func (c *Client) StartClientLoop() {
 		c.conn.Close()
 		log.Infof("action: closing_connection | result: success | client_id: %v", c.config.ID)
 		log.Infof("action: sigterm_signal_handling | result: success | client_id: %v", c.config.ID)
-		close(shutdown_channel)
 	}()
-
-	// Verify if the shutdown channel was closed to exit the client execution in case of SIGTERM or normal exit
-	select {
-	case <-shutdown_channel:
-		log.Infof("action: shutdown_detected | result: success | client_id: %v", c.config.ID)
-		return
-	default:
-	}
 
 	// Create the connection to the server and defer the close (close at the end)
 	c.createClientSocket()
-
-	// Create and format the message to send to the server using the bet information
-	message := fmt.Sprintf(
-		"%s|%s|%s|%s|%s|%s",
-		c.Bet.Id,
-		c.Bet.Name,
-		c.Bet.Surname,
-		c.Bet.Gambler_id,
-		c.Bet.Birthdate,
-		c.Bet.Number,
-	)
-
-	// Send the message to the server
-	err := SendMessage(c.conn, message)
+	defer c.conn.Close()
+	filepath := fmt.Sprintf("./data/agency-%s.csv", c.config.ID)
+	file, err := os.Open(filepath)
 	if err != nil {
+		log.Fatalf(
+			"action: open_file | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+
+	for {
+		// Read the corresponding file and extract a BATCH of bets to send to the server
+		bets := read_bet_batch(c.config.BatchSize, scanner)
+		if len(bets) == 0 {
+			break
+		}
+
+		// If the batch is smaller than BATCH_SIZE, we send the remaining bets and finish
+		if len(bets) < c.config.BatchSize {
+			send_bets(c.conn, bets, c.config.ID)
+			break
+		}
+
+		// Send the batch
+		send_bets(c.conn, bets, c.config.ID)
+
+		// Wait for the server to send ACK
+		log_info_message := fmt.Sprintf("action: batch_enviado | result: success | client_id: %v | message: %v", c.config.ID, "ACK")
+		wait_for_message(c.conn, "ACK", log_info_message, c.config.ID)
+	}
+
+	// Send the EOF message to the server
+	eof := SendMessage(c.conn, "EOF\n")
+	if eof != nil {
 		log.Fatalf(
 			"action: send_message | result: fail | client_id: %v | error: %v",
 			c.config.ID,
-			err,
+			eof,
 		)
 	}
 
-	// Read the response from the server
-	response, err := ReceiveMessage(c.conn)
-	if err != nil {
-		log.Fatalf(
-			"action: receive_message | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
-	}
+	// Wait for the server to send final ACK
+	log_info_message := fmt.Sprintf("action: apuestas_enviadas | result: success | client_id: %v | message: %v", c.config.ID, "ACK")
+	wait_for_message(c.conn, "ACK", log_info_message, c.config.ID)
 
-	// Log the response from the server
-	if response == "ACK" {
-		log.Infof("action: apuesta_enviada | result: success | dni: %s | numero: %s", c.Bet.Gambler_id, c.Bet.Number)
-	} else {
-		log.Fatalf(
-			"action: receive_message | result: apuesta_fallida | client_id: %s | response: %s",
-			c.Bet.Id,
-			response,
-		)
-	}
-
+	// Wait for winners reveal :D
+	wait_for_message(c.conn, "WINNERS", "action: winners_revealing | result: in_progress", c.config.ID)
+	ask_winners(c.conn, c.config.ID)
 
 	log.Infof("action: client_finished | result: success | client_id: %v", c.config.ID)
 
 	// Close the signal channel to unblock the signal handling goroutine and exit the program
 	close(sig)
+}
+
+func send_bets(conn net.Conn, bets []Bet, client_id string) {
+	// Send the message to the server
+	for _, bet := range bets {
+		message := fmt.Sprintf("%s|%s|%s|%s|%s|%s\n", client_id, bet.Name, bet.Surname, bet.Gambler_id, bet.Birthdate, bet.Number)
+		err := SendMessage(conn, message)
+		if err != nil {
+			log.Fatalf(
+				"action: send_message | result: fail | client_id: %v | error: %v",
+				client_id,
+				err,
+			)
+		}
+	}
+}
+
+func wait_for_message(conn net.Conn, msg string, loginfo string, client_id string) {
+	// Wait for the server to send ACK
+	received, err := ReceiveMessage(conn)
+	if err != nil {
+		log.Fatalf(
+			"action: receive_message | result: fail | client_id: %v | error: %v",
+			client_id,
+			err,
+		)
+	}
+	if received == msg {
+		log.Infof(loginfo)
+	}
+}
+
+func ask_winners(conn net.Conn, client_id string) {
+ 	winners := make([]string, 0)
+	for {
+		// Wait for the server to send the winner
+		winner, err := ReceiveMessage(conn)
+		if err != nil {
+			log.Fatalf(
+				"action: receive_message | result: fail | client_id: %v | error: %v",
+				client_id,
+				err,
+			)
+		}
+		if winner == "WINNERS_EOF\n" {
+			break
+		}
+		winners = append(winners, winner)
+	}
+	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %d", len(winners))
 }
