@@ -89,5 +89,6 @@ El comportamiento de parte de los clientes es luego de mandar todo su archivo de
 Para lograrlo agregué al servidor una lista de sockets de forma que al terminar la recepción y guardado de las apuestas de un cliente, luego no se pierda ni cierre el socket del mismo para que cuando las `5` agencias hayan enviado sus apuestas, el servidor pueda enviar los números ganadores a cada cliente. Tenía intenciones de hacerlo genérico para poder soportar `N` agencias pero como en nuestro ejemplo abarcamos solo `5` agencias, me limité a usar una constante como contador de las agencias que ya se atendió en el servidor, si lo fueramos a aplicar a un caso real de `N` agencias, deberíamos poner un estilo de timeout para que el server espere hasta determinado momento a las agencias para que registren sus apuestas y pasado el tiempo no acepte más agencias y proceda con el sorteo.  
 La forma de ejecución de este ejercicio y su comprobación son análogas a los anteriores, simplemente se corre el compose y se miran los logs para ver que efectivamente se registraron las apuestas y luego de sortear la lotería cada cliente imprime la cantidad de ganadores de su agencia por log.  
 
+## <span style="color:#9669f0">Ejercicio 8</span>
 
 
