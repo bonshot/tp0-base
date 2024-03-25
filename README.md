@@ -8,11 +8,11 @@ Para el ejercicio 1 simplemente basta con agregar una configuración similar al 
 De manera análoga en el ejercicio 1.1 solo debemos agregar las líneas mencionadas cambiando el ID del cliente de forma que se identifique de forma única en la red. Esto decidí hacerlo con bash por simplicidad en el manejo de archivos y esto nos ahorra, como se explicó en la presentación del trabajo, tener que hacer a mano tantos clientes nuevos como queramos.  
 La forma de ejecutar el script es la siguiente:  
 ```bash
-./create_clients.sh <cantidad_de_clientes>
+./script-multiclient.sh <cantidad_de_clientes>
 ```
 O para entornos no unix-like:
 ```bash
-bash create_clients.sh <cantidad_de_clientes>
+bash script-multiclient.sh <cantidad_de_clientes>
 ```  
 Luego de ejecutarlo se generará un archivo `docker-compose.yml` con la cantidad de clientes que se haya especificado integrados en la red del server. Se hizo esto con el solo fin de no interferir con el `docker-compose-dev.yml` que provee la cátedra, es meramente arbitrario. 
 Para poder "uppear" los contenedores se reemplaza en el `Makefile` proveído por la cátedra el `docker-compose-dev.yml` por el generado por el script.  
@@ -47,6 +47,14 @@ docker exec -it client_test /bin/bash -c "echo 'Hello buddy' | nc server 12345 |
 ```
 Esto se encarga de enviar el mensaje al servidor usando `netcat` con la IP y puerto que el servidor tiene asignado en sus configs iniciales, luego usando pipes para redireccionar las salidas, con `grep` imprimo por pantalla si el mensaje recibido como respuesta del servidor es el mismo que el enviado y con `&&` y `||` imprimo si el test pasó o falló.  
 Finalmente como se trata de un script de testing, me encargo de parar y remover el container temporal así como el compose que levanté para el servidor.  
+Modo de uso: 
+```bash
+./net_test_script.sh
+```
+O para entornos no unix-like:
+```bash
+bash net_test_script.sh
+```
 
 ## <span style="color:#9669f0">Ejercicio 4</span>
 En este caso se deberá hacer un handleo de la señal _SIGTERM_ para que tanto cliente como servidor puedan cerrarse de manera correcta o _graceful_.  

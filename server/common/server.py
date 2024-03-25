@@ -24,7 +24,7 @@ class Server:
         signal.signal(signal.SIGTERM, self.__sigterm_handler)
         
         while not self.sigterm_received:
-            client_sock = self.__accept_new_connection(timeout=1)
+            client_sock = self.__accept_new_connection(timeout=0.1)
             if client_sock is not None:
                 self.__handle_client_connection(client_sock)
         self._server_socket.close()
