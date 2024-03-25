@@ -194,14 +194,14 @@ class Server:
         # Split the message into the bet information
         bet_info = msg.split("|")
         bet_info[5].replace("\n", "")
-        # logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
+        logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
         
         # Create a new bet object and store it
         bet = Bet(*bet_info)
         lock.acquire()
         store_bets([bet])
         lock.release()
-        # logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+        logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
         return bet
             
 
