@@ -1,8 +1,5 @@
-import select
 import socket
 import logging
-import signal
-import time
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -20,8 +17,8 @@ class Server:
         finishes, servers starts to accept new connections again
         """
 
-        client_sock = self.__accept_new_connection()
-        if client_sock is not None:
+        while True:
+            client_sock = self.__accept_new_connection()
             self.__handle_client_connection(client_sock)
 
     def __handle_client_connection(self, client_sock):
