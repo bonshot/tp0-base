@@ -57,10 +57,10 @@ def receive_message(sock):
     msg_len = 0
     header = read_header(sock)
     msg_len = int(header)
-    msg = ""
+    msg = b''
     total_received = 0
     while total_received < msg_len:
-        received = sock.recv(msg_len - total_received).decode('utf-8')
+        received = sock.recv(msg_len - total_received)
         if received == "":
             return ""
         total_received += len(received)

@@ -7,12 +7,13 @@ from common.communications import receive_message, send_message
 from common.utils import Bet, store_bets
 
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, batch_size):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self._sigterm_received = False
+        self._BATCH_SIZE = batch_size
 
     def run(self):
         """
@@ -54,20 +55,29 @@ class Server:
         client socket will also be closed
         """
         try:
-            msg = receive_message(client_sock)
-            # Split the message into the bet information
-            bet_info = msg.split("|")
-            addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            
-            # Create a new bet object and store it
-            bet = Bet(*bet_info)
-            store_bets([bet])
-            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+            actual_bets_received = 0
+            while True:
+                msg = receive_message(client_sock).decode('utf-8')
+                if msg == "EOF\n":
+                    send_message(client_sock, "ACK")
+                    logging.info(f'action: all_batchs_saved | result: success | ip: {addr[0]} | msg: ACK')
+                    break
+                # Split the message into the bet information
+                bet_info = msg.split("|")
+                bet_info[5].replace("\n", "")
+                addr = client_sock.getpeername()
+                logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
+                
+                # Create a new bet object and store it
+                bet = Bet(*bet_info)
+                store_bets([bet])
+                logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+                actual_bets_received += 1
 
-            # Send an ACK message to the client
-            send_message(client_sock, "ACK")
-
+                if actual_bets_received == self._BATCH_SIZE:
+                    send_message(client_sock, "ACK")
+                    logging.info(f'action: batch_saved | result: success | ip: {addr[0]} | msg: ACK')
+                    actual_bets_received = 0
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
