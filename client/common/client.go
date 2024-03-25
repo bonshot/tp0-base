@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"net"
 	"time"
-	"os"
-	"os/signal"
-	"syscall"
 	log "github.com/sirupsen/logrus"
 )
 
