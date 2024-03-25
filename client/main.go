@@ -116,4 +116,5 @@ func main() {
 	client := common.NewClient(clientConfig)
 	client.Bet = newBet
 	client.StartClientLoop()
+	fmt.Println("Client finished")
 }
