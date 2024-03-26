@@ -10,8 +10,6 @@ services:
       - LOGGING_LEVEL=DEBUG
     networks:
       - testing_net
-    volumes:
-      - config-volume:/config
     
   client1:
     container_name: client1
@@ -24,8 +22,6 @@ services:
       - testing_net
     depends_on:
       - server
-    volumes:
-      - config-volume:/config
     
   client2:
     container_name: client2
@@ -38,8 +34,6 @@ services:
       - testing_net
     depends_on:
       - server
-    volumes:
-      - config-volume:/config
     
   client3:
     container_name: client3
@@ -52,36 +46,6 @@ services:
       - testing_net
     depends_on:
       - server
-    volumes:
-      - config-volume:/config
-    
-  client4:
-    container_name: client4
-    image: client:latest
-    entrypoint: /client
-    environment:
-      - CLI_ID=4
-      - CLI_LOG_LEVEL=DEBUG
-    networks:
-      - testing_net
-    depends_on:
-      - server
-    volumes:
-      - config-volume:/config
-    
-  client5:
-    container_name: client5
-    image: client:latest
-    entrypoint: /client
-    environment:
-      - CLI_ID=5
-      - CLI_LOG_LEVEL=DEBUG
-    networks:
-      - testing_net
-    depends_on:
-      - server
-    volumes:
-      - config-volume:/config
     
 networks:
   testing_net:
@@ -89,8 +53,3 @@ networks:
       driver: default
       config:
         - subnet: 172.25.125.0/24
-
-volumes:
-  config-volume:
-    external: true
-
