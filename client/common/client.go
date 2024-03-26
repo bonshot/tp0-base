@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"time"
@@ -22,7 +23,6 @@ type ClientConfig struct {
 type Client struct {
 	config ClientConfig
 	conn   net.Conn
-	Bet   Bet
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -50,8 +50,11 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
-// Starts the client loop or execution of the client
+// StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
+	// autoincremental msgID to identify every message sent
+	msgID := 1
+
 	// Handle SIGTERM to close the connection before exiting
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGTERM)
@@ -71,60 +74,50 @@ func (c *Client) StartClientLoop() {
 		close(shutdown_channel)
 	}()
 
-	// Verify if the shutdown channel was closed to exit the client execution in case of SIGTERM
-	select {
-	case <-shutdown_channel:
-		log.Infof("action: shutdown_detected | result: success | client_id: %v", c.config.ID)
-		return
-	default:
-	}
+loop:
+	// Send messages if the loopLapse threshold has not been surpassed
+	for timeout := time.After(c.config.LoopLapse); ; {
+		select {
+		case <-timeout:
+	        log.Infof("action: timeout_detected | result: success | client_id: %v",
+                c.config.ID,
+            )
+			break loop
+		case <-shutdown_channel:
+			log.Infof("action: shutdown_detected | result: success | client_id: %v", c.config.ID)
+			break loop
+		default:
+		}
 
-	// Create the connection to the server and defer the close (close at the end)
-	c.createClientSocket()
-	defer c.conn.Close()
+		// Create the connection the server in every loop iteration. Send an
+		c.createClientSocket()
 
-	// Create and format the message to send to the server using the bet information
-	message := fmt.Sprintf(
-		"%s|%s|%s|%s|%s|%s",
-		c.Bet.Id,
-		c.Bet.Name,
-		c.Bet.Surname,
-		c.Bet.Gambler_id,
-		c.Bet.Birthdate,
-		c.Bet.Number,
-	)
-
-	// Send the message to the server
-	err := SendMessage(c.conn, message)
-	if err != nil {
-		log.Fatalf(
-			"action: send_message | result: fail | client_id: %v | error: %v",
+		// TODO: Modify the send to avoid short-write
+		fmt.Fprintf(
+			c.conn,
+			"[CLIENT %v] Message N°%v\n",
 			c.config.ID,
-			err,
+			msgID,
 		)
+		msg, err := bufio.NewReader(c.conn).ReadString('\n')
+		msgID++
+		c.conn.Close()
+
+		if err != nil {
+			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
+                c.config.ID,
+				err,
+			)
+			return
+		}
+		log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
+            c.config.ID,
+            msg,
+        )
+
+		// Wait a time between sending one message and the next one
+		time.Sleep(c.config.LoopPeriod)
 	}
 
-	// Read the response from the server
-	response, err := ReceiveMessage(c.conn)
-	if err != nil {
-		log.Fatalf(
-			"action: receive_message | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
-	}
-
-	// Log the response from the server
-	if response == "ACK" {
-		log.Infof("action: apuesta_enviada | result: success | dni: %s | numero: %s", c.Bet.Gambler_id, c.Bet.Number)
-	} else {
-		log.Fatalf(
-			"action: receive_message | result: apuesta_fallida | client_id: %s | response: %s",
-			c.Bet.Id,
-			response,
-		)
-	}
-
-
-	log.Infof("action: client_finished | result: success | client_id: %v", c.config.ID)
+	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
