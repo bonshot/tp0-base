@@ -71,7 +71,7 @@ func (c *Client) StartClientLoop() {
 		close(shutdown_channel)
 	}()
 
-	// Verify if the shutdown channel was closed to exit the client execution in case of SIGTERM or normal exit
+	// Verify if the shutdown channel was closed to exit the client execution in case of SIGTERM
 	select {
 	case <-shutdown_channel:
 		log.Infof("action: shutdown_detected | result: success | client_id: %v", c.config.ID)
@@ -81,6 +81,7 @@ func (c *Client) StartClientLoop() {
 
 	// Create the connection to the server and defer the close (close at the end)
 	c.createClientSocket()
+	defer c.conn.Close()
 
 	// Create and format the message to send to the server using the bet information
 	message := fmt.Sprintf(
@@ -126,7 +127,4 @@ func (c *Client) StartClientLoop() {
 
 
 	log.Infof("action: client_finished | result: success | client_id: %v", c.config.ID)
-
-	// Close the signal channel to unblock the signal handling goroutine and exit the program
-	close(sig)
 }
