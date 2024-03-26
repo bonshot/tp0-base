@@ -11,7 +11,7 @@ services:
     networks:
       - testing_net
     volumes:
-      - server_vol:/config
+      - config-volume:/config
     
   client1:
     container_name: client1
@@ -25,7 +25,7 @@ services:
     depends_on:
       - server
     volumes:
-      - client_vol:/config
+      - config-volume:/config
     
   client2:
     container_name: client2
@@ -39,7 +39,7 @@ services:
     depends_on:
       - server
     volumes:
-      - client_vol:/config
+      - config-volume:/config
     
   client3:
     container_name: client3
@@ -53,7 +53,7 @@ services:
     depends_on:
       - server
     volumes:
-      - client_vol:/config
+      - config-volume:/config
     
   client4:
     container_name: client4
@@ -67,7 +67,7 @@ services:
     depends_on:
       - server
     volumes:
-      - client_vol:/config
+      - config-volume:/config
     
   client5:
     container_name: client5
@@ -81,7 +81,7 @@ services:
     depends_on:
       - server
     volumes:
-      - client_vol:/config
+      - config-volume:/config
     
 networks:
   testing_net:
@@ -89,16 +89,8 @@ networks:
       driver: default
       config:
         - subnet: 172.25.125.0/24
+
 volumes:
-  server_vol:
-    driver: local
-    driver_opts:
-      type: none
-      device: ./server/config
-      o: bind
-  client_vol:
-    driver: local
-    driver_opts:
-      type: none
-      device: ./client/config
-      o: bind
+  config-volume:
+    external: true
+

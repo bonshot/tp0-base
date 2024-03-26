@@ -27,7 +27,7 @@ echo "    container_name: server
     networks:
       - testing_net
     volumes:
-      - server_vol:/config
+      - config-volume:/config
     " >> $FILE
 
 for i in $(seq 1 $CONTAINERS_NUMBER); do
@@ -43,7 +43,7 @@ for i in $(seq 1 $CONTAINERS_NUMBER); do
     depends_on:
       - server
     volumes:
-      - client_vol:/config
+      - config-volume:/config
     " >> $FILE
 done
 
@@ -55,17 +55,7 @@ echo "      config:" >> $FILE
 echo "        - subnet: 172.25.125.0/24" >> $FILE
 
 echo "volumes:" >> $FILE
-echo "  server_vol:" >> $FILE
-echo "    driver: local" >> $FILE
-echo "    driver_opts:" >> $FILE
-echo "      type: none" >> $FILE
-echo "      device: ./server/config" >> $FILE
-echo "      o: bind" >> $FILE
-echo "  client_vol:" >> $FILE
-echo "    driver: local" >> $FILE
-echo "    driver_opts:" >> $FILE
-echo "      type: none" >> $FILE
-echo "      device: ./client/config" >> $FILE
-echo "      o: bind" >> $FILE
+echo "  config-volume:" >> $FILE
+echo "    external: true" >> $FILE
 
 
